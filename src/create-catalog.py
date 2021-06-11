@@ -1,11 +1,12 @@
 import pandas as pd
 import os
+from PIL import Image
 
-#PARENT_DIR = os.path.dirname(os.getcwd())
+# PARENT_DIR = os.path.dirname(os.getcwd())
 PARENT_DIR = ''
 DATA_PATH = 'data'
 OUTPUT_DIR = 'info'
-OUTPUT_NAME = 'images_catalog.csv'
+OUTPUT_NAME = 'catalog.csv'
 
 DF = pd.DataFrame(columns=['dataset',
                            'species',
@@ -13,8 +14,8 @@ DF = pd.DataFrame(columns=['dataset',
                            'breed_name',
                            'dir_path',
                            'file_name',
-                           'full_path',
-                           'file_size_kb'])
+                           'full_path'])
+
 
 def catalog_microsoft_dataset():
     microsoft_dataset = DF.copy()
@@ -40,10 +41,10 @@ def catalog_microsoft_dataset():
 
 def catalog_oxford_dataset():
     dir_name = 'cats-and-dogs-breeds-classification-oxford-dataset'
-    dir_path =  os.path.join(DATA_PATH, dir_name)
+    dir_path = os.path.join(DATA_PATH, dir_name)
 
     # loading list txt file into a dataframe
-    oxford_dataset = pd.read_csv(os.path.join(PARENT_DIR,dir_path, 'annotations', 'annotations', 'list.txt'),
+    oxford_dataset = pd.read_csv(os.path.join(PARENT_DIR, dir_path, 'annotations', 'annotations', 'list.txt'),
                                  skiprows=[i for i in range(0, 6)], sep=" ",
                                  header=None)
     oxford_dataset.columns = ['image', 'class_id', 'species', 'breed_id']
@@ -65,6 +66,19 @@ def catalog_oxford_dataset():
     return oxfort_dataset_formatted
 
 
+def check_images(catalog):
+    # Label catalog files as image / not image
+    for i, row in catalog.iterrows():
+        filename = row['full_path']
+        try:
+            im = Image.open(filename)
+            catalog.loc[i, 'is_image'] = True
+        except IOError:
+            catalog.loc[i, 'is_image'] = False
+
+    return catalog
+
+
 def main():
     # Merging datasets
     microsoft_dataset = catalog_microsoft_dataset()
@@ -82,12 +96,11 @@ def main():
     # Adding absolute path
     df['full_path'] = (df['dir_path'] + '/' + df['file_name'])
 
-    # # Adding file size
-    # df['file_size_kb'] = [os.path.getsize(os.path.join(PARENT_DIR,img_row['dir_path'], img_row['file_name'])) // 1024 for
-    #                       _, img_row in df.iterrows()]
-
     # Resetting index to have a running number on rows
     df.reset_index(drop=True, inplace=True)
+
+    # Add a column indicating of observed file is a readable image
+    df = check_images(df)
 
     # Saving catalog to file
     if not os.path.exists(os.path.join(PARENT_DIR, OUTPUT_DIR)):
@@ -96,5 +109,5 @@ def main():
     df.to_csv(os.path.join(PARENT_DIR, OUTPUT_DIR, OUTPUT_NAME), index=False)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()

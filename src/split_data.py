@@ -1,23 +1,10 @@
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from PIL import Image
 import argparse
+import sys
 
-
-CATALOG_PATH = "info/images_catalog.csv"
-
-def check_images(catalog):
-    # Label catalog files as image / not image
-    for i, row in catalog.iterrows():
-        filename = row['full_path']
-        try:
-            im = Image.open(filename)
-            catalog.loc[i, 'is_image'] = True
-        except IOError:
-            catalog.loc[i, 'is_image'] = False
-
-    return catalog
+CATALOG_PATH = "info/catalog.csv"
 
 
 def split_species(catalog, test_size=.1, random_state=42):
@@ -36,10 +23,12 @@ def split_breed(catalog, species, test_size=.1, random_state=42):
     X = catalog[catalog['is_image'] &
                 ~catalog['breed'].isna() &
                 (catalog['species'].str.lower() == species.lower())].copy()
-    X_train, X_test = train_test_split(X.index, test_size=.1, random_state=42, stratify=X['breed'])
+    X_train, X_test = train_test_split(X.index, test_size=test_size, random_state=random_state, stratify=X['breed'])
 
     catalog.loc[X_train, f'{species.lower()}_train'] = True
     catalog.loc[X_test, f'{species.lower()}_train'] = False
+
+    return catalog
 
 
 def move_file(filename, source_path, destination_path):
@@ -54,8 +43,8 @@ def clear_empty_dirs(root_dir='.'):
             os.removedirs(dirpath)
 
 
-def organize_species(df_info, undo=False):
-    set_data = df_info.loc[~df_info['species_train'].isna(), :]
+def organize_species(catalog, undo=False):
+    set_data = catalog.loc[~catalog['species_train'].isna(), :]
 
     for i, row in set_data.iterrows():
         row_set = 'train' if row['species_train'] else 'test'
@@ -72,11 +61,13 @@ def organize_species(df_info, undo=False):
 
     clear_empty_dirs('data')
 
+    return catalog
 
-def organize_breed(df_info, species, undo=False):
+
+def organize_breed(catalog, species, undo=False):
     column = 'cat_train' if species.lower() == 'cat' else 'dog_train'
 
-    set_data = df_info.loc[~df_info[column].isna(), :]
+    set_data = catalog.loc[~catalog[column].isna(), :]
 
     for i, row in set_data.iterrows():
         row_set = 'train' if row[column] else 'test'
@@ -94,25 +85,52 @@ def organize_breed(df_info, species, undo=False):
 
     clear_empty_dirs('data')
 
+    return catalog
 
-def main():
-    # catalog = pd.read_csv('info/images_catalog.csv')
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--validate", help="validate images in catalog; add new column with "
-                                                 "boolean values to indicate if record at path is an image",
+def initialize_parser():
+    parser = argparse.ArgumentParser(description='Split the data by breed or species with reorganization of folders',
+                                     add_help=True)
+
+    # Add acceptable arguments for CLI
+    parser.add_argument('type', help='the type of split / organization functions to run',
+                        choices=['breed', 'species'])
+    parser.add_argument('-b', "--by", help="if chosen type is breed, a species [cat/dog] needs to be supplied as well",
+                        required='breed' in sys.argv)
+    parser.add_argument("-s", "--split", help="split and write set indicators to catalog",
                         action="store_true")
+    parser.add_argument("-o", "--organize", help="also organize the folders based on splitting",
+                        action="store_true")
+    parser.add_argument("-u", "--undo", help="Undo organization of images; Restore original image location.",
+                        action="store_true")
+
     args = parser.parse_args()
 
-    # FUNCTION_MAP = {'top20': my_top20_func,
-    #                 'listapps': my_listapps_func}
-    #
-    # parser.add_argument('command', choices=FUNCTION_MAP.keys())
-    #
-    # args = parser.parse_args()
-    #
-    # func = FUNCTION_MAP[args.command]
-    # func()
+    return parser, args
+
+
+def main():
+    # Initiate parser and arguments
+    parser, args = initialize_parser()
+
+    # raise parser error if no operation [split or organize] was selected
+    if not args.split and not args.organize:
+        parser.error("no operation was selected; must indicate at least one of -s or -o")
+
+    # read catalog file
+    catalog = pd.read_csv(CATALOG_PATH)
+
+    # run specific functions based on given arguments
+    if args.type == 'breed':
+        catalog = split_breed(catalog, args.by) if args.split else catalog
+        catalog = organize_breed(catalog, args.by, undo=args.undo) if args.organize else catalog
+    else:
+        catalog = split_species(catalog) if args.split else catalog
+        catalog = organize_species(catalog, undo=args.undo) if args.organize else catalog
+
+    # update catalog file
+    catalog.to_csv(CATALOG_PATH, index=False)
+
 
 if __name__ == '__main__':
     main()
