@@ -66,19 +66,6 @@ def catalog_oxford_dataset():
     return oxfort_dataset_formatted
 
 
-def check_images(catalog):
-    # Label catalog files as image / not image
-    for i, row in catalog.iterrows():
-        filename = row['full_path']
-        try:
-            im = Image.open(filename)
-            catalog.loc[i, 'is_image'] = True
-        except IOError:
-            catalog.loc[i, 'is_image'] = False
-
-    return catalog
-
-
 def main():
     # Merging datasets
     microsoft_dataset = catalog_microsoft_dataset()
@@ -98,9 +85,6 @@ def main():
 
     # Resetting index to have a running number on rows
     df.reset_index(drop=True, inplace=True)
-
-    # Add a column indicating of observed file is a readable image
-    df = check_images(df)
 
     # Saving catalog to file
     if not os.path.exists(os.path.join(PARENT_DIR, OUTPUT_DIR)):

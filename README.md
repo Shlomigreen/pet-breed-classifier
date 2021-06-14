@@ -82,7 +82,6 @@ by a known path (as provided on each dataset's page).
 - `dir_path`: relative path to the directory holding the file (str).
 - `file_name`: name of the file, including extension (str).
 - `full_path`: concatenation of `dir_path` and `file_name` (str).
-- `is_image`: indicates if the found file can be opened as an image (boolean).
 
 The catalog file will be created on the following path by default `info/catalog.csv` after running 
 the catalog generating script:
@@ -90,6 +89,15 @@ the catalog generating script:
 ```bash
 python3 src/create-catalog.py
 ```
+
+After the catalog has been created, a virtual pre-processing can be done to detect non-images and wrognly classified images. This will add a new column to the catalog file:
+- `is_image`: indicates if the found file can be opened as an image and is truely labeled (boolean).
+
+```bash
+python3 src/pre-processing.py
+```
+> Note every file is being checked so this process take a bit of time.
+
 
 
 # Splitting data 📑 
@@ -162,4 +170,3 @@ data/
 
 > > If needed, used functions from each command can be imported to a notebook / other python script:
 > <br>```from src.split_data import split_species, split_breed, organize_species, organize_breed```
-
