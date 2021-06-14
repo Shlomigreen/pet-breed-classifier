@@ -4,7 +4,15 @@ import tensorflow.keras.models
 import os
 
 
+def validate_dirs(*dir_paths):
+    for dir_path in dir_paths:
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+
+
 def save_model(model, name, conf_path='models/config', weight_path='models/weights'):
+    validate_dirs(conf_path, weight_path)
+
     # Saving the architecture
     with open(os.path.join(conf_path, name + '.conf'), 'w') as outfile:
         config = model.get_config()
