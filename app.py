@@ -144,6 +144,8 @@ def main():
 
         col1.header(species)
         col1.subheader('Detected Breeds (Probability)')
+        col1.write("Shown breeds cover 99% of prediction probabilities:")
+
         for i in range(max_val):
             label = labels[breed_index[i]]
             proba = breed_proba[breed_index[i]]
