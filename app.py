@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 
 # Constants
 SPECIES_CLASSIFIER = 'vgg16_species_classifier'
-CAT_BREED_CLASSIFIER = ''
+CAT_BREED_CLASSIFIER = 'vgg_16_cat_breed_classifier'
 DOG_BREED_CLASSIFIER = 'vgg_16_dog_breed_classifier'
+
+BREED_CLASSIFIERS = {'cat': 'vgg_16_cat_breed_classifier',
+                     'dog': 'vgg_16_dog_breed_classifier'}
 
 CAT_BREEDS_PATH = 'info/cat_breeds.names'
 DOG_BREED_PATH = 'info/dog_breeds.names'
@@ -20,18 +23,25 @@ NBREEDS = (12, 25)
 INPUT_SIZE = (224, 224, 3)
 
 
+def page_setup():
+    # st.set_page_config(page_title='your_title', page_icon=favicon, layout='wide', initial_sidebar_state='auto')
+    st.set_page_config(page_title='Pet Breed Classifier', layout='wide', page_icon=':dog:',
+                       initial_sidebar_state='auto')
+
+    # Sidebar
+    st.sidebar.title('🐶 Pet Breed Classifier 🐱')
+    st.sidebar.write("Take or upload a picture of your cat or dog to find out their predicted breed(s) !")
+
+    # Add an upload file sidebar
+    uploaded_file = st.sidebar.file_uploader('', type=['jpeg', 'jpg', 'png'])
+
+    return uploaded_file
+
+
 @st.cache(allow_output_mutation=True)
 def load_species_classifier():
     model = load_model(SPECIES_CLASSIFIER)
     return model
-
-
-@st.cache(allow_output_mutation=True)
-def load_breed_classifier(species):
-    if species.lower() == 'dog':
-        return load_model(DOG_BREED_CLASSIFIER)
-    elif species.lower() == 'cat':
-        return None
 
 
 @st.cache
@@ -41,23 +51,43 @@ def load_labels():
     with open(DOG_BREED_PATH) as f:
         dog_labels = f.readlines()
 
-    return cat_labels, dog_labels
+    labels = {'cat': cat_labels,
+              'dog': dog_labels}
+
+    return labels
+
+
+def convert_to_predictable(img, resize=INPUT_SIZE[:2]):
+    img = img.resize(size=resize)
+    img = np.array(img)
+    img = np.expand_dims(img, 0)
+
+    return img
 
 
 def predict_species(model, img):
+    img = convert_to_predictable(img, model.input_shape[1:3])
+
     proba = model.predict(img).flatten()
-    i = 1 if proba > .5 else 0
+    i = 0 if proba < 0.5 else 1
+
     return SPECIES[i]
 
 
-def predict_breed(species, img):
-    index = SPECIES.index(species)
-    breed_proba = np.random.dirichlet(np.ones(NBREEDS[index]), size=1)[0]
+@st.cache(allow_output_mutation=True)
+def load_breed_classifier(species):
+    model_name = BREED_CLASSIFIERS[species]
+    return load_model(model_name)
 
-    return breed_proba
+
+# def predict_breed(species, img):
+#     index = SPECIES.index(species)
+#     breed_proba = np.random.dirichlet(np.ones(NBREEDS[index]), size=1)[0]
+#
+#     return breed_proba
 
 
-def predict_breed_true(model, img):
+def predict_breed(model, img):
     img_array = convert_to_predictable(img, model.input_shape[1:3])
 
     breed_proba = model.predict(img_array)
@@ -81,54 +111,38 @@ def radar_chart(top_n, breed_proba, labels):
     return fig
 
 
-def convert_to_predictable(img, resize=INPUT_SIZE[:2]):
-    img = img.resize(size=resize)
-    img = np.array(img)
-    img = np.expand_dims(img, 0)
-
-    return img
-
-
 def main():
-    # st.set_page_config(page_title='your_title', page_icon=favicon, layout='wide', initial_sidebar_state='auto')
-    st.set_page_config(page_title='Pet Breed Classifier', layout='wide', page_icon=':dog:',
-                       initial_sidebar_state='auto')
-
-    # Sidebar
-    st.sidebar.title('🐶 Pet Breed Classifier 🐱')
-    st.sidebar.write("Take or upload a picture of your cat or dog to find out their predicted breed(s) !")
-    uploaded_file = st.sidebar.file_uploader('', type=['jpeg', 'jpg', 'png'])
+    uploaded_file = page_setup()
 
     # Loading species classifier model
-    model = load_species_classifier()
+    species_model = load_species_classifier()
 
     # load breed labels
-    cat_labels, dog_labels = load_labels()
+    breed_labels = load_labels()
 
     # When a file is uploaded
     if uploaded_file is not None:
-        # load image
+        # load uploaded file as image
         image = Image.open(uploaded_file)
 
-        # Convert to numpy array with proper dimensions for prediction
-        img_array = convert_to_predictable(image, model.input_shape[1:3])
-
         # predict species
-        species = predict_species(model, img_array)
+        species = predict_species(species_model, image)
 
-        # loading breed predicting model
-        breed_model = load_breed_classifier(species)
-
-        # allow to change species
+        # allow to change species in case of mis-classification
         species = st.sidebar.selectbox('Predicted species (click to change)', SPECIES, index=SPECIES.index(species))
 
+        # converting species to lowercase for future use
+        species = species.lower()
+
+        # loading specific breed predicting model
+        breed_model = load_breed_classifier(species)
+
         # predict breed
-        breed_proba = predict_breed(species, image) if species.lower() == 'cat' else \
-            predict_breed_true(breed_model, image)
+        breed_proba = predict_breed(breed_model, image)
         breed_index = breed_proba.argsort()[::-1]
 
         # obtain proper labels
-        labels = cat_labels if species.lower() == 'cat' else dog_labels
+        labels = breed_labels[species]
 
         # # PRESENT RESULTS
         # SIDEBAR
@@ -142,14 +156,14 @@ def main():
 
         col1, col2, col3 = st.beta_columns(3)
 
-        col1.header(species)
-        col1.subheader('Detected Breeds (Probability)')
+        col1.header(species.title())
+        col1.subheader('Detected Breeds')
         col1.write("Shown breeds cover 99% of prediction probabilities:")
 
         for i in range(max_val):
             label = labels[breed_index[i]]
             proba = breed_proba[breed_index[i]]
-            col1.write("- {} {:.0%}".format(label,
+            col1.write("- {} ({:.0%})".format(label,
                                             proba))
         col2.image(image, width=400)
 
