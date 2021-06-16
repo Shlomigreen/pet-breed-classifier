@@ -5,28 +5,49 @@ import plotly.express as px
 import streamlit as st
 from PIL import Image
 from src.modeling import load_model
-import matplotlib.pyplot as plt
+import urllib.request
+import os
 
 # Constants
 SPECIES_CLASSIFIER = 'vgg16_species_classifier'
-CAT_BREED_CLASSIFIER = 'vgg_16_cat_breed_classifier'
-DOG_BREED_CLASSIFIER = 'vgg_16_dog_breed_classifier'
-
 BREED_CLASSIFIERS = {'cat': 'vgg_16_cat_breed_classifier',
                      'dog': 'vgg_16_dog_breed_classifier'}
+
+GITHUB_REPO = 'https://github.com/Shlomigreen/pet-breed-classifier/'
+RELEASE_TAG = 'v1.0'
 
 CAT_BREEDS_PATH = 'info/cat_breeds.names'
 DOG_BREED_PATH = 'info/dog_breeds.names'
 
 SPECIES = ['Cat', 'Dog']
 NBREEDS = (12, 25)
-INPUT_SIZE = (224, 224, 3)
+
+
+def download_model(tag, name, *extensions):
+    base_url = GITHUB_REPO + r'releases/download/{}/{}.{}'
+
+    for extn in extensions:
+        url = base_url.format(tag, name, extn)
+        filename = url.split('/')[-1]
+
+        save_path = 'models/{}'.format(filename)
+        if not os.path.exists(save_path):
+            urllib.request.urlretrieve(url, save_path)
+
+
+def download_models(tag):
+    download_model(tag, SPECIES_CLASSIFIER, 'weights', 'conf')
+    for _, value in BREED_CLASSIFIERS.items():
+        download_model(tag, value, 'weights', 'conf')
 
 
 def page_setup():
     # st.set_page_config(page_title='your_title', page_icon=favicon, layout='wide', initial_sidebar_state='auto')
     st.set_page_config(page_title='Pet Breed Classifier', layout='wide', page_icon=':dog:',
                        initial_sidebar_state='auto')
+
+    # download_required models
+    download_models(RELEASE_TAG)
 
     # Sidebar
     st.sidebar.title('🐶 Pet Breed Classifier 🐱')
@@ -57,7 +78,7 @@ def load_labels():
     return labels
 
 
-def convert_to_predictable(img, resize=INPUT_SIZE[:2]):
+def convert_to_predictable(img, resize):
     img = img.resize(size=resize)
     img = np.array(img)
     img = np.expand_dims(img, 0)
@@ -71,7 +92,11 @@ def predict_species(model, img):
     proba = model.predict(img).flatten()
     i = 0 if proba < 0.5 else 1
 
-    return SPECIES[i]
+    species = SPECIES[i]
+
+    print("Predicted species:", species)
+
+    return species
 
 
 @st.cache(allow_output_mutation=True)
@@ -126,10 +151,15 @@ def main():
         image = Image.open(uploaded_file)
 
         # predict species
-        species = predict_species(species_model, image)
+        predicted_species = predict_species(species_model, image)
 
         # allow to change species in case of mis-classification
-        species = st.sidebar.selectbox('Predicted species (click to change)', SPECIES, index=SPECIES.index(species))
+        species = st.sidebar.selectbox('Predicted species (click to change)',
+                                       SPECIES,
+                                       index=SPECIES.index(predicted_species))
+
+        if species != predicted_species:
+            print("Predicted species changed to", species)
 
         # converting species to lowercase for future use
         species = species.lower()
@@ -164,7 +194,7 @@ def main():
             label = labels[breed_index[i]]
             proba = breed_proba[breed_index[i]]
             col1.write("- {} ({:.0%})".format(label,
-                                            proba))
+                                              proba))
         col2.image(image, width=400)
 
 
