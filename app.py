@@ -103,8 +103,6 @@ def predict_species(model, img):
 def load_breed_classifier(species):
     model_name = BREED_CLASSIFIERS[species]
     model = load_model(model_name)
-    model._make_predict_function()
-
     return model
 
 
