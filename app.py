@@ -99,10 +99,13 @@ def predict_species(model, img):
     return species
 
 
-@st.cache(allow_output_mutation=True)
+# @st.cache(allow_output_mutation=True)
 def load_breed_classifier(species):
     model_name = BREED_CLASSIFIERS[species]
-    return load_model(model_name)
+    model = load_model(model_name)
+    model._make_predict_function()
+
+    return model
 
 
 # def predict_breed(species, img):
