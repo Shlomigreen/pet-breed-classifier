@@ -4,13 +4,16 @@ import tensorflow.keras.models
 import os
 
 
+CONF_PATH = 'models'
+WEIGHT_PATH = 'models'
+
 def validate_dirs(*dir_paths):
     for dir_path in dir_paths:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
 
-def save_model(model, name, conf_path='models/config', weight_path='models/weights'):
+def save_model(model, name, conf_path=CONF_PATH, weight_path=WEIGHT_PATH):
     validate_dirs(conf_path, weight_path)
 
     # Saving the architecture
@@ -24,7 +27,7 @@ def save_model(model, name, conf_path='models/config', weight_path='models/weigh
         pickle.dump(weights, output_file)
 
 
-def load_model(name, conf_path='models/config', weight_path='models/weights'):
+def load_model(name, conf_path=CONF_PATH, weight_path=WEIGHT_PATH):
     # load architecture
     with open(os.path.join(conf_path, name + '.conf')) as json_file:
         loaded_config = json.load(json_file)
