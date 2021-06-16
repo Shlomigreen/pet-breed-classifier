@@ -111,7 +111,7 @@ def main():
         image = Image.open(uploaded_file)
 
         # Convert to numpy array with proper dimensions for prediction
-        img_array = convert_to_predictable(image)
+        img_array = convert_to_predictable(image, model.input_shape[1:3])
 
         # predict species
         species = predict_species(model, img_array)
