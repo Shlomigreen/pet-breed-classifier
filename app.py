@@ -7,6 +7,7 @@ from PIL import Image
 from src.modeling import load_model
 import urllib.request
 import os
+from image_classification import predict_species, predict_breed
 
 # Constants
 SPECIES_CLASSIFIER = 'vgg16_species_classifier'
@@ -86,17 +87,17 @@ def convert_to_predictable(img, resize):
     return img
 
 
-def predict_species(model, img):
-    img = convert_to_predictable(img, model.input_shape[1:3])
-
-    proba = model.predict(img).flatten()
-    i = 0 if proba < 0.5 else 1
-
-    species = SPECIES[i]
-
-    print("Predicted species:", species)
-
-    return species
+# def predict_species(model, img):
+#     img = convert_to_predictable(img, model.input_shape[1:3])
+#
+#     proba = model.predict(img).flatten()
+#     i = 0 if proba < 0.5 else 1
+#
+#     species = SPECIES[i]
+#
+#     print("Predicted species:", species)
+#
+#     return species
 
 
 # @st.cache(allow_output_mutation=True)
@@ -113,11 +114,11 @@ def load_breed_classifier(species):
 #     return breed_proba
 
 
-def predict_breed(model, img):
-    img_array = convert_to_predictable(img, model.input_shape[1:3])
-
-    breed_proba = model.predict(img_array)
-    return breed_proba.flatten()
+# def predict_breed(model, img):
+#     img_array = convert_to_predictable(img, model.input_shape[1:3])
+#
+#     breed_proba = model.predict(img_array)
+#     return breed_proba.flatten()
 
 
 def radar_chart(top_n, breed_proba, labels):
@@ -140,8 +141,8 @@ def radar_chart(top_n, breed_proba, labels):
 def main():
     uploaded_file = page_setup()
 
-    # Loading species classifier model
-    species_model = load_species_classifier()
+    # # Loading species classifier model
+    # species_model = load_species_classifier()
 
     # load breed labels
     breed_labels = load_labels()
@@ -151,8 +152,9 @@ def main():
         # load uploaded file as image
         image = Image.open(uploaded_file)
 
-        # predict species
-        predicted_species = predict_species(species_model, image)
+        # # predict species
+        # predicted_species = predict_species(species_model, image)
+        predicted_species = predict_species(image)
 
         # allow to change species in case of mis-classification
         species = st.sidebar.selectbox('Predicted species (click to change)',
@@ -165,11 +167,11 @@ def main():
         # converting species to lowercase for future use
         species = species.lower()
 
-        # loading specific breed predicting model
-        breed_model = load_breed_classifier(species)
+        # # loading specific breed predicting model
+        # breed_model = load_breed_classifier(species)
 
         # predict breed
-        breed_proba = predict_breed(breed_model, image)
+        breed_proba = predict_breed(species, image)
         breed_index = breed_proba.argsort()[::-1]
 
         # obtain proper labels
@@ -194,8 +196,10 @@ def main():
         for i in range(max_val):
             label = labels[breed_index[i]]
             proba = breed_proba[breed_index[i]]
-            col1.write("- {} ({:.0%})".format(label,
-                                              proba))
+            text = "- {} ({:.0%})".format(label,
+                                              proba)
+            col1.write(text)
+            print(text)
         col2.image(image, width=400)
 
 
