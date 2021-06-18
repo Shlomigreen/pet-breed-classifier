@@ -1,4 +1,4 @@
-# 🐶 Pet Breed Classifier 🐱
+# [🐶 Pet Breed Classifier 🐱](https://share.streamlit.io/shlomigreen/pet-breed-classifier/app.py)
 
 **Used datasets:**
 1. [Microsoft Cats vs Dogs Dataset](https://www.kaggle.com/shaunthesheep/microsoft-catsvsdogs-dataset)
