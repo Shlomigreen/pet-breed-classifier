@@ -37,6 +37,8 @@ def download_model(tag, name, *extensions):
 
 
 def download_models(tag):
+    if not os.path.exists('models'):
+        os.mkdir('models')
     download_model(tag, SPECIES_CLASSIFIER, 'weights', 'conf')
     for _, value in BREED_CLASSIFIERS.items():
         download_model(tag, value, 'weights', 'conf')
