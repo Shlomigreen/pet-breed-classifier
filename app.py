@@ -140,6 +140,7 @@ def radar_chart(top_n, breed_proba, labels):
 
 def main():
     uploaded_file = page_setup()
+    st.write("Use the sidebar to upload an image")
 
     # # Loading species classifier model
     # species_model = load_species_classifier()
@@ -161,8 +162,8 @@ def main():
                                        SPECIES,
                                        index=SPECIES.index(predicted_species))
 
-        if species != predicted_species:
-            print("Predicted species changed to", species)
+        #if species != predicted_species:
+            #print("Predicted species changed to", species)
 
         # converting species to lowercase for future use
         species = species.lower()
@@ -193,13 +194,21 @@ def main():
         col1.subheader('Detected Breeds')
         col1.write("Shown breeds cover 99% of prediction probabilities:")
 
+        INFO_URL = 'https://dogtime.com/dog-breeds/{}'
+
         for i in range(max_val):
             label = labels[breed_index[i]]
             proba = breed_proba[breed_index[i]]
             text = "- {} ({:.0%})".format(label,
-                                              proba)
-            col1.write(text)
-            print(text)
+                                          proba)
+            if species == 'dog':
+                breed = label.lower().replace(' ', '-')
+                breed_link = INFO_URL.format(breed)
+                col1.markdown("{} [ℹ️]({})".format(text, breed_link))
+                #print(text)
+            else:
+                col1.write(text)
+                #print(text)
         col2.image(image, width=400)
 
 
